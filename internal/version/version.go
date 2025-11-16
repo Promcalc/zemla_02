@@ -2,12 +2,12 @@ package version
 
 import "fmt"
 
+// Эти переменные будут заполнены через ldflags при сборке
 var (
-	// Эти переменные будут заполнены через ldflags при сборке
-	version   = "dev"
-	commit    = "unknown"
-	buildDate = "unknown"
-	goVersion = "unknown"
+	Version   = "dev"
+	Commit    = "unknown"
+	BuildDate = "unknown"
+	GoVersion = "unknown"
 )
 
 // VersionInfo содержит информацию о версии приложения
@@ -21,15 +21,15 @@ type VersionInfo struct {
 // Get возвращает информацию о версии
 func Get() VersionInfo {
 	return VersionInfo{
-		Version:   version,
-		Commit:    commit,
-		BuildDate: buildDate,
-		GoVersion: goVersion,
+		Version:   Version,
+		Commit:    Commit,
+		BuildDate: BuildDate,
+		GoVersion: GoVersion,
 	}
 }
 
 // String возвращает строковое представление версии
 func String() string {
-	return fmt.Sprintf("lot-collector/%s (%s) built on %s with %s", 
-		version, commit, buildDate, goVersion)
+	return fmt.Sprintf("lot-collector/%s (%s) built on %s with %s",
+		Version, Commit, BuildDate, GoVersion)
 }

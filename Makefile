@@ -52,3 +52,22 @@ docker-build-version: ## Build Docker images with version tags
 	echo "Building Docker images with version: $$VERSION, short SHA: $$SHORT_SHA" && \
 	docker build -t lot-collector:$$VERSION -t lot-collector:$$SHORT_SHA --build-arg APP=collector --build-arg VERSION=$$VERSION --build-arg COMMIT_SHA=$$COMMIT_SHA --build-arg BUILD_DATE=$$BUILD_DATE -f Dockerfile . && \
 	docker build -t lot-web:$$VERSION -t lot-web:$$SHORT_SHA --build-arg APP=web --build-arg VERSION=$$VERSION --build-arg COMMIT_SHA=$$COMMIT_SHA --build-arg BUILD_DATE=$$BUILD_DATE -f Dockerfile .
+
+# Миграции
+.PHONY: migrate-up
+migrate-up:
+	docker-compose run --rm migrate
+
+.PHONY: migrate-down
+migrate-down:
+	docker-compose run --rm migrate -- -action down
+
+.PHONY: migrate-down-to
+migrate-down-to:
+	@if [ -z "$(VERSION)" ]; then echo "Укажите VERSION"; exit 1; fi
+	docker-compose run --rm migrate -- -action down -version $(VERSION)
+
+.PHONY: migrate-force
+migrate-force:
+	@if [ -z "$(VERSION)" ]; then echo "Укажите VERSION"; exit 1; fi
+	docker-compose run --rm migrate -- -action force -version $(VERSION)

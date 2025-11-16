@@ -79,3 +79,19 @@ docker run --rm your-dockerhub-username/lot-collector:latest --version
 # Локально
 make version
 bin/collector --version
+```
+
+# Запуск отладчика:
+
+В контейнере делаем так:
+```
+dlv debug --headless --listen=:2345 --api-version=2 --log --log-output=debugger --accept-multiclient --continue=false ./cmd/collector
+```
+
+В vscode  - Start debugging F5
+
+Запуск миграций:
+
+```
+go run ./cmd/migrate --config config/config.yaml --action up
+```

@@ -2,7 +2,7 @@
 
 # Настройки RSS-ленты
 rss:
-  url: "https://torgi.gov.ru/new/api/public/lotcards/rss?lotStatus=PUBLISHED,APPLICATIONS_SUBMISSION&matchPhrase=false&byFirstVersion=true"
+  url: "https://torgi.gov.ru/new/api/public/lotcards/rss?lotStatus=PUBLISHED,APPLICATIONS_SUBMISSION&catCode=2&byFirstVersion=true"
   timeout: 30s                  # Таймаут запроса к RSS
   max_items: 100                # Максимальное количество обрабатываемых лотов за раз
   ignore_ssl: true              # Игнорировать проверку SSL-сертификатов

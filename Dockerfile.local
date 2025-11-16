@@ -1,0 +1,59 @@
+FROM golang:1.25-alpine
+
+# Установим git и tzdata (если нужно)
+RUN apk add --no-cache git tzdata\
+    bash \
+    gcc \
+    musl-dev \
+    openssh \
+    libc-dev \
+    make \
+    git \
+    curl \
+    bash \
+    postgresql-client \
+    postgis \
+    tzdata \
+    ca-certificates \
+    geos \
+    proj \
+    gdal \
+    && go install github.com/go-delve/delve/cmd/dlv@v1.25.2
+
+ENV CGO_ENABLED=1 \
+    GOOS=linux \
+    GOARCH=amd64 \
+    GOMAXPROCS=4
+
+RUN go install github.com/air-verse/air@latest
+
+# Альтернативная установка delve для Alpine
+# RUN wget -O /tmp/dlv.tar.gz https://github.com/go-delve/delve/releases/download/v1.21.2/delve_1.21.2_linux_amd64.tar.gz && \
+#     tar -xzf /tmp/dlv.tar.gz -C /tmp && \
+#     mv /tmp/dlv /go/bin/dlv && \
+#     rm -rf /tmp/*
+
+# Создаем и переключаемся на пользователя vscode
+RUN adduser -D -s /bin/bash vscode && \
+    mkdir -p /app && \
+    mkdir -p /home/vscode/.ssh && \
+    chown -R vscode:vscode /app 
+
+RUN chmod -R 777 /go/pkg
+
+EXPOSE 8000 6060
+
+# Переключаемся на пользователя vscode
+USER vscode
+
+# Рабочая директория — куда смонтируем код
+WORKDIR /app
+
+# Копируем go.mod/go.sum, если они есть (на первом запуске их не будет — это нормально)
+# RUN --mount=type=bind,source=go.mod,target=go.mod \
+#     --mount=type=bind,source=go.sum,target=go.sum \
+#     go mod download || echo "go.mod not found — skipping dependencies"
+
+# По умолчанию — просто ждём, пока разработчик запустит что-то вручную
+# или переопределим команду в docker-compose
+CMD ["sh", "-c", "echo 'Development container ready. Run your Go commands here.' && sleep infinity"]
