@@ -1,0 +1,40 @@
+# Exclude local development files
+local-dev/
+.git/
+.github/
+.vscode/
+.idea/
+
+# Exclude build artifacts
+bin/
+tmp/
+dist/
+build/
+
+# Exclude test files
+*_test.go
+test/
+tests/
+
+# Exclude documentation
+docs/
+README.md
+CONTRIBUTING.md
+LICENSE
+
+# Exclude configuration files
+.env*
+config/local.yaml
+config/development.yaml
+config/production.yaml
+
+# Exclude vendor directory (we use go mod)
+vendor/
+
+# Exclude coverage reports
+coverage.out
+profile.out
+
+# Exclude logs
+*.log
+logs/

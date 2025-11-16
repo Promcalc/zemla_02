@@ -1,0 +1,51 @@
+# Go
+bin/
+tmp/
+*.exe
+*.test
+*.prof
+*.out
+coverage.out
+profile.out
+debug
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+TAGS
+
+# Docker
+.dockerignore
+local-dev/db_data/
+
+# Environment
+.env
+.env.local
+.env.development
+.env.production
+
+# Build artifacts
+/dist
+/build
+*.a
+*.so
+*.dylib
+
+# Dependencies
+vendor/
+go.sum
+
+# Tests
+*.test
+*.test.* 
+TEST-*
+
+# Logs
+*.log
+logs/
+
+# OS specific
+.DS_Store
+Thumbs.db

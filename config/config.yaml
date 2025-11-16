@@ -1,0 +1,82 @@
+# Конфигурация сервиса мониторинга земельных лотов
+
+# Настройки RSS-ленты
+rss:
+  url: "https://torgi.gov.ru/new/api/public/lotcards/rss?lotStatus=PUBLISHED,APPLICATIONS_SUBMISSION&matchPhrase=false&byFirstVersion=true"
+  timeout: 30s                  # Таймаут запроса к RSS
+  max_items: 100                # Максимальное количество обрабатываемых лотов за раз
+  ignore_ssl: true              # Игнорировать проверку SSL-сертификатов
+
+# Настройки базы данных
+database:
+  url: "postgres://postgres:postgres@db:5432/lots?sslmode=disable"
+  max_connections: 10          # Максимальное количество соединений
+  connection_timeout: 5s       # Таймаут подключения
+  statement_timeout: 30s       # Таймаут выполнения запросов
+  idle_timeout: 30m            # Таймаут простоя соединений
+  max_idle_connections: 2      # Максимальное количество простаивающих соединений
+
+# Настройки веб-сервера
+web:
+  port: 8000                   # Порт для HTTP-сервера
+  host: "0.0.0.0"              # Хост для прослушивания
+  read_timeout: 15s            # Таймаут чтения запроса
+  write_timeout: 15s           # Таймаут записи ответа
+  idle_timeout: 60s            # Таймаут простоя соединения
+  max_header_bytes: 1048576    # Максимальный размер заголовков (1MB)
+  cors_enabled: true           # Включить CORS для API
+  cors_origins: ["*"]          # Разрешенные источники для CORS
+
+# Настройки планировщика сбора данных
+collector:
+  schedule_interval: "15m"     # Интервал основного сбора данных
+  retry_interval: "1h"         # Интервал повторной обработки ошибок
+  max_retries: 5               # Максимальное количество попыток для одного лота
+  concurrency: 3               # Количество одновременных запросов к внешним API
+  backoff_initial: "1s"        # Начальная задержка для экспоненциального бэк-оффа
+  backoff_max: "5m"            # Максимальная задержка для бэк-оффа
+
+# Настройки внешних API
+external_apis:
+  # API torgi.gov.ru
+  torgi:
+    base_url: "https://torgi.gov.ru/new/api/public/lotcards"
+    timeout: 30s
+    max_retries: 3
+    retry_delay: "2s"
+    user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  
+  # API nspd.gov.ru (геопортал)
+  nspd:
+    base_url: "https://nspd.gov.ru/api/geoportal/v2/search/geoportal"
+    map_url: "https://nspd.gov.ru/map?thematic=PKK"
+    timeout: 45s
+    max_retries: 3
+    retry_delay: "3s"
+    user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    referer: "https://nspd.gov.ru/map"
+
+# Настройки логирования
+logging:
+  level: "info"                # Уровень логирования: debug, info, warn, error
+  format: "json"               # Формат логов: json или text
+  stdout: true                 # Выводить логи в stdout
+  file: ""                     # Файл для логов (оставить пустым для отключения)
+
+# Настройки кэширования
+cache:
+  enabled: true                # Включить кэширование
+  ttl: "5m"                    # Время жизни кэша для данных
+  max_size: 100                # Максимальный размер кэша в элементах
+
+# Настройки кластеризации для карты
+clustering:
+  zoom_levels:
+    region: 10                 # Максимальный zoom для кластеризации по регионам
+    district: 14               # Максимальный zoom для кластеризации по районам
+  min_points: 2                # Минимальное количество точек для формирования кластера
+
+# Общие настройки
+debug: false                   # Режим отладки (включает дополнительные логи и эндпоинты)
+health_check_interval: "30s"   # Интервал проверки здоровья сервиса
+shutdown_timeout: "10s"        # Таймаут для graceful shutdown

@@ -1,0 +1,22 @@
+root = "."
+tmp_dir = ".air"
+
+[build]
+cmd = "go build -o ./tmp/main ./cmd/collector"
+bin = "./tmp/main"
+full_bin = "go run ./cmd/collector"
+include_ext = ["go", "html", "tmpl", "css", "js", "yaml", "json"]
+exclude_dir = ["assets", "tmp", "vendor", "node_modules", "local-dev"]
+delay = 1000
+
+[log]
+time = true
+
+[color]
+main = "magenta"
+watcher = "cyan"
+build = "yellow"
+runner = "green"
+
+[misc]
+clean_on_exit = true

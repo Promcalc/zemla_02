@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  collector:
+    build:
+      context: ..
+      dockerfile: Dockerfile.dev
+    command: go run ./cmd/collector
+    volumes:
+      - ../:/app
+      - /app/.air
+    environment:
+      - DB_URL=postgres://postgres:postgres@db:5432/lots?sslmode=disable
+      - RSS_URL=https://torgi.gov.ru/new/api/public/lotcards/rss?lotStatus=PUBLISHED,APPLICATIONS_SUBMISSION&matchPhrase=false&byFirstVersion=true
+      - COLLECTOR_SCHEDULE_INTERVAL=1m
+      - COLLECTOR_RETRY_INTERVAL=5m
+    depends_on:
+      - db
+    networks:
+      - lot-network
+
+  web:
+    build:
+      context: ..
+      dockerfile: Dockerfile.dev
+    command: go run ./cmd/web
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../:/app
+      - /app/.air
+    environment:
+      - DB_URL=postgres://postgres:postgres@db:5432/lots?sslmode=disable
+      - WEB_PORT=8000
+    depends_on:
+      - db
+    networks:
+      - lot-network
+
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: lots
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - db_/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - lot-network
+
+volumes:
+  db_
+
+networks:
+  lot-network:
+    driver: bridge
