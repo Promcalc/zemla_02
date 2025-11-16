@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/Promcalc/zemla_02/internal/config"
-	"github.com/Promcalc/zemla_02/internal/rss"
 	"github.com/Promcalc/zemla_02/internal/version"
 
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -78,35 +77,8 @@ func main() {
 	}
 
 	// Создание контекста с отменой
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-
-	// После загрузки конфигурации и логгера
-
-	ctx := context.Background()
-	rssParser := rss.NewParser(cfg, logger)
-	lots, err := rssParser.FetchAndParse(ctx)
-	if err != nil {
-		logger.Error("Ошибка при парсинге RSS", "error", err)
-		os.Exit(1)
-	}
-
-	logger.Info("Получено лотов", "count", len(lots))
-	for _, lot := range lots {
-		logger.Info("Лот",
-			"guid", lot.GUID,
-			"title", lot.Title,
-			"pub_date", lot.PubDate,
-			"fields_count", len(lot.Fields),
-		)
-		if len(lot.Fields) > 0 {
-			logger.Info("Динамические поля", "fields", lot.Fields)
-		}
-	}
-
-	// После этого можно выйти, чтобы проверить логи
-	logger.Info("Тест парсинга завершён")
-	return
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// Обработка сигналов для graceful shutdown
 	stop := make(chan os.Signal, 1)
@@ -114,7 +86,7 @@ func main() {
 	go func() {
 		sig := <-stop
 		logger.Info("Received shutdown signal", "signal", sig.String())
-		// cancel()
+		cancel()
 	}()
 
 	// Имитация работы сервиса
