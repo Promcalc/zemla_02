@@ -3,15 +3,16 @@ package db
 
 import (
 	"context"
-	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/Promcalc/zemla_02/internal/rss"
 	"github.com/Promcalc/zemla_02/internal/parser"
+	"github.com/Promcalc/zemla_02/internal/rss"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Repository struct {
@@ -184,4 +185,24 @@ func (r *Repository) saveExternalData(
 		nspdJSON, nspdFetched, nspdErrStr,
 	)
 	return err
+}
+
+// Close закрывает пул подключений к базе данных.
+func (r *Repository) Close() {
+	if r.pool != nil {
+		r.pool.Close()
+	}
+}
+
+// GetLastPubDate возвращает самую свежую pub_date из базы
+func (r *Repository) GetLastPubDate(ctx context.Context) (time.Time, error) {
+	var lastPubDate time.Time
+	err := r.pool.QueryRow(ctx, "SELECT MAX(pub_date) FROM lots").Scan(&lastPubDate)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return time.Time{}, nil // таблица пуста
+		}
+		return time.Time{}, fmt.Errorf("ошибка получения last_pub_date: %w", err)
+	}
+	return lastPubDate, nil
 }

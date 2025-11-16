@@ -1,6 +1,45 @@
 // Package rss содержит логику загрузки и парсинга RSS-ленты с torgi.gov.ru.
 package rss
 
+/*
+// Внутри main или scheduler
+lots, err := rssParser.FetchAndParse(ctx)
+if err != nil {  обработка  }
+
+dbRepo, err := db.NewRepository(ctx, cfg.Database.URL, logger)
+if err != nil {  обработка  }
+
+torgiClient := torgi.NewClient(logger)
+nspdClient := nspd.NewClient(logger)
+_ = nspdClient.Initialize(ctx)
+
+for _, rssLot := range lots {
+	// Извлекаем кадастровый номер и дату
+	extracted := parser.ExtractFromLot(rssLot)
+
+	// Запрос к torgi
+	lotInfo, torgiErr := torgiClient.GetLotInfo(ctx, rssLot.Link)
+
+	// Запрос к nspd (если есть кадастровый номер)
+	var nspdResp *nspd.GeoportalResponse
+	var nspdErr error
+	if extracted.CadastralNumber != "" {
+		nspdResp, nspdErr = nspdClient.SearchByCadastralNumber(ctx, extracted.CadastralNumber)
+	}
+
+	// Сохраняем всё атомарно
+	_, err := dbRepo.SaveLotWithExternalData(
+		ctx, rssLot, extracted,
+		lotInfo,
+		nspdResp,
+		torgiErr, nspdErr,
+	)
+	if err != nil {
+		logger.Error("Ошибка сохранения лота", "guid", rssLot.GUID, "error", err)
+	}
+}
+*/
+
 import (
 	"context"
 	"crypto/tls"

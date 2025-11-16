@@ -1,3 +1,4 @@
+// Package main запускает сервис сбора данных о земельных лотах.
 package main
 
 import (
@@ -8,13 +9,14 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/Promcalc/zemla_02/internal/config"
+	"github.com/Promcalc/zemla_02/internal/db"
+	"github.com/Promcalc/zemla_02/internal/nspd"
+	"github.com/Promcalc/zemla_02/internal/rss"
+	"github.com/Promcalc/zemla_02/internal/scheduler"
+	"github.com/Promcalc/zemla_02/internal/torgi"
 	"github.com/Promcalc/zemla_02/internal/version"
-
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
 var (
@@ -24,87 +26,96 @@ var (
 )
 
 func init() {
-	flag.BoolVar(&showVersion, "version", false, "Show version information and exit")
-	flag.StringVar(&configPath, "config", "config/config.yaml", "Path to configuration file")
-	flag.BoolVar(&verbose, "verbose", false, "Enable verbose logging")
+	flag.BoolVar(&showVersion, "version", false, "Показать версию и выйти")
+	flag.StringVar(&configPath, "config", "config/config.yaml", "Путь к конфигурации")
+	flag.BoolVar(&verbose, "verbose", false, "Подробное логирование")
 }
 
 func main() {
 	flag.Parse()
 
-	// Показать версию и выйти, если запрошено
+	// Показ версии
 	if showVersion {
 		fmt.Println(version.String())
 		os.Exit(0)
 	}
 
-	// Настройка логера
+	// Логгер
 	level := slog.LevelInfo
 	if verbose {
 		level = slog.LevelDebug
 	}
-
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: level,
-	}))
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
 	slog.SetDefault(logger)
 
 	// Загрузка конфигурации
 	cfg, err := config.Load(configPath)
 	if err != nil {
-		logger.Error("Failed to load configuration", "error", err, "config_path", configPath)
+		logger.Error("Ошибка загрузки конфигурации", "path", configPath, "error", err)
 		os.Exit(1)
 	}
 
-	// Логирование запуска сервиса
-	logger.Info("Starting lot collector service",
+	// Лог запуска
+	logger.Info("Запуск сборщика лотов",
 		"version", version.Get().Version,
 		"commit", version.Get().Commit,
-		"build_date", version.Get().BuildDate,
-		"go_version", version.Get().GoVersion,
-		"config_path", configPath,
+		"config", configPath,
 		"rss_url", cfg.RSS.URL,
 		"db_url", cfg.Database.URL,
 		"schedule_interval", cfg.Collector.ScheduleInterval,
 		"retry_interval", cfg.Collector.RetryInterval,
 	)
 
-	// Логирование конфигурации с флагом debug
-	if verbose {
-		logger.Debug("Full configuration",
-			"config", fmt.Sprintf("%+v", cfg),
-		)
-	}
-
-	// Создание контекста с отменой
+	// Контекст с отменой
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Обработка сигналов для graceful shutdown
+	// Обработка сигналов завершения
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		sig := <-stop
-		logger.Info("Received shutdown signal", "signal", sig.String())
+		logger.Info("Получен сигнал завершения", "signal", sig.String())
 		cancel()
 	}()
 
-	// Имитация работы сервиса
-	logger.Info("Service started successfully. Waiting for shutdown signal...")
-	<-ctx.Done()
+	// Инициализация репозитория БД
+	dbRepo, err := db.NewRepository(ctx, cfg.Database.URL, logger)
+	if err != nil {
+		logger.Error("Ошибка подключения к БД", "error", err)
+		os.Exit(1)
+	}
+	defer dbRepo.Close()
 
-	// Graceful shutdown
-	logger.Info("Starting graceful shutdown...")
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer shutdownCancel()
+	// Инициализация клиентов
+	rssParser := rss.NewParser(cfg, logger)
+	torgiClient := torgi.NewClient(logger)
+	nspdClient := nspd.NewClient(logger)
 
-	// Здесь будет логика graceful shutdown (закрытие соединений с БД и т.д.)
-	select {
-	case <-shutdownCtx.Done():
-		logger.Warn("Shutdown timeout reached, forcing exit")
-	case <-time.After(2 * time.Second):
-		logger.Info("Graceful shutdown completed")
+	// Инициализация nspd (однократно)
+	if err := nspdClient.Initialize(ctx); err != nil {
+		logger.Warn("Не удалось инициализировать nspd.gov.ru", "error", err)
 	}
 
-	logger.Info("Service stopped")
+	// Создание заданий
+	collectorJob := scheduler.NewCollectorJob(logger, dbRepo, rssParser, torgiClient, nspdClient)
+	retryJob := scheduler.NewRetryJob(logger, dbRepo, torgiClient, nspdClient)
+
+	// Создание и запуск планировщика
+	sched := scheduler.New(scheduler.Config{
+		CollectorInterval: cfg.Collector.ScheduleInterval,
+		RetryInterval:     cfg.Collector.RetryInterval,
+	}, logger)
+
+	sched.AddCollectorJob(collectorJob)
+	sched.AddRetryJob(retryJob)
+	sched.Start()
+	defer func() {
+		_ = sched.Stop(ctx)
+	}()
+
+	logger.Info("Сборщик запущен и ожидает сигнал завершения...")
+	<-ctx.Done()
+
+	logger.Info("Завершение работы...")
 }

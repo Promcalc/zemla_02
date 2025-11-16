@@ -4,7 +4,6 @@ package scheduler
 import (
 	"context"
 	"log/slog"
-	"time"
 
 	"github.com/Promcalc/zemla_02/internal/db"
 	"github.com/Promcalc/zemla_02/internal/nspd"
@@ -43,12 +42,26 @@ func (j *CollectorJob) Run(ctx context.Context) {
 	logger := j.logger.With("job", "collector")
 	logger.Info("Запуск задания сбора данных")
 
-	// 1. Получаем RSS
-	lots, err := j.rssParser.FetchAndParse(ctx)
+	// Получаем последнюю дату из БД
+	lastPubDate, err := j.dbRepo.GetLastPubDate(ctx)
+	if err != nil {
+		logger.Error("Не удалось получить last_pub_date", "error", err)
+		return
+	}
+
+	// Получаем только новые лоты
+	lots, err := j.rssParser.FetchAndParseSince(ctx, lastPubDate)
 	if err != nil {
 		logger.Error("Ошибка при получении RSS", "error", err)
 		return
 	}
+
+	// 1. Получаем RSS
+	// lots, err := j.rssParser.FetchAndParse(ctx)
+	// if err != nil {
+	// 	logger.Error("Ошибка при получении RSS", "error", err)
+	// 	return
+	// }
 
 	if len(lots) == 0 {
 		logger.Info("Новые лоты не найдены")

@@ -95,3 +95,28 @@ dlv debug --headless --listen=:2345 --api-version=2 --log --log-output=debugger 
 ```
 go run ./cmd/migrate --config config/config.yaml --action up
 ```
+
+# Ошибки в логе при работе
+
+{"time":"2025-11-16T22:30:10.873118666Z","level":"INFO","msg":"Запрос деталей лота","service":"torgi","lot_id":"24000029350000000060_21","rss_link":"https://torgi.gov.ru/new/public/lots/lot/24000029350000000060_21"}
+{"time":"2025-11-16T22:30:11.419346875Z","level":"DEBUG","msg":"Успешно получены детали лота","service":"torgi","lot_id":"24000029350000000060_21","keys":55}
+{"time":"2025-11-16T22:30:11.419486284Z","level":"INFO","msg":"Запрос данных по кадастровому номеру","service":"nspd","cn":"56:03:0000000:13"}
+{"time":"2025-11-16T22:30:12.018513781Z","level":"DEBUG","msg":"Успешно получены данные geoportal","service":"nspd","cn":"56:03:0000000:13","features":0}
+{"time":"2025-11-16T22:30:12.019768963Z","level":"DEBUG","msg":"Лот с таким GUID уже существует","guid":"https://torgi.gov.ru/new/public/lots/lot/24000029350000000060_21"}
+{"time":"2025-11-16T22:30:12.02018579Z","level":"ERROR","msg":"Ошибка сохранения лота","job":"collector","guid":"https://torgi.gov.ru/new/public/lots/lot/24000029350000000060_21","error":"ошибка сохранения лота: не удалось найти существующий лот: ERROR: current transaction is aborted, commands ignored until end of transaction block (SQLSTATE 25P02)"}
+{"time":"2025-11-16T22:30:12.020269796Z","level":"INFO","msg":"Запрос деталей лота","service":"torgi","lot_id":"22000036770000000134_4","rss_link":"https://torgi.gov.ru/new/public/lots/lot/22000036770000000134_4"}
+{"time":"2025-11-16T22:30:12.582798537Z","level":"DEBUG","msg":"Успешно получены детали лота","service":"torgi","lot_id":"22000036770000000134_4","keys":53}
+{"time":"2025-11-16T22:30:12.582907245Z","level":"INFO","msg":"Запрос данных по кадастровому номеру","service":"nspd","cn":"65:11:0000020:481"}
+{"time":"2025-11-16T22:30:13.201356529Z","level":"DEBUG","msg":"Успешно получены данные geoportal","service":"nspd","cn":"65:11:0000020:481","features":0}
+{"time":"2025-11-16T22:30:13.202420398Z","level":"DEBUG","msg":"Лот с таким GUID уже существует","guid":"https://torgi.gov.ru/new/public/lots/lot/22000036770000000134_4"}
+{"time":"2025-11-16T22:30:13.202689516Z","level":"ERROR","msg":"Ошибка сохранения лота","job":"collector","guid":"https://torgi.gov.ru/new/public/lots/lot/22000036770000000134_4","error":"ошибка сохранения лота: не удалось найти существующий лот: ERROR: current transaction is aborted, commands ignored until end of transaction block (SQLSTATE 25P02)"}
+{"time":"2025-11-16T22:30:13.202775021Z","level":"INFO","msg":"Запрос деталей лота","service":"torgi","lot_id":"22000036770000000134_2","rss_link":"https://torgi.gov.ru/new/public/lots/lot/22000036770000000134_2"}
+{"time":"2025-11-16T22:30:13.751601071Z","level":"DEBUG","msg":"Успешно получены детали лота","service":"torgi","lot_id":"22000036770000000134_2","keys":53}
+{"time":"2025-11-16T22:30:13.751626672Z","level":"INFO","msg":"Запрос данных по кадастровому номеру","service":"nspd","cn":"65:11:0000020:479"}
+{"time":"2025-11-16T22:30:16.257034269Z","level":"DEBUG","msg":"Успешно получены данные geoportal","service":"nspd","cn":"65:11:0000020:479","features":0}
+{"time":"2025-11-16T22:30:16.258482564Z","level":"DEBUG","msg":"Лот с таким GUID уже существует","guid":"https://torgi.gov.ru/new/public/lots/lot/22000036770000000134_2"}
+{"time":"2025-11-16T22:30:16.258900091Z","level":"ERROR","msg":"Ошибка сохранения лота","job":"collector","guid":"https://torgi.gov.ru/new/public/lots/lot/22000036770000000134_2","error":"ошибка сохранения лота: не удалось найти существующий лот: ERROR: current transaction is aborted, commands ignored until end of transaction block (SQLSTATE 25P02)"}
+{"time":"2025-11-16T22:30:16.258920992Z","level":"INFO","msg":"Задание сбора данных завершено","job":"collector"}
+^C{"time":"2025-11-16T22:35:39.72350187Z","level":"INFO","msg":"Получен сигнал завершения","signal":"interrupt"}
+{"time":"2025-11-16T22:35:39.724090003Z","level":"INFO","msg":"Завершение работы..."}
+{"time":"2025-11-16T22:35:39.724102304Z","level":"INFO","msg":"Остановка планировщика","component":"scheduler"}

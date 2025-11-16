@@ -1,30 +1,5 @@
 package scheduler
 
-/*
-// После создания клиентов и репозитория:
-
-// Создаём задания
-collectorJob := scheduler.NewCollectorJob(logger, dbRepo, rssParser, torgiClient, nspdClient)
-retryJob := scheduler.NewRetryJob(logger, dbRepo, torgiClient, nspdClient)
-
-// Создаём планировщик
-sched := scheduler.New(scheduler.Config{
-	CollectorInterval: cfg.Collector.ScheduleInterval,
-	RetryInterval:     cfg.Collector.RetryInterval,
-}, logger)
-
-// Регистрируем задания
-sched.AddCollectorJob(collectorJob)
-sched.AddRetryJob(retryJob)
-
-// Запускаем
-sched.Start()
-defer sched.Stop(ctx)
-
-// Ожидаем сигнал завершения
-<-ctx.Done()
-*/
-
 import (
 	"context"
 	"log/slog"
@@ -39,20 +14,24 @@ type Config struct {
 }
 
 type Scheduler struct {
-	cron   *cron.Cron
-	logger *slog.Logger
+	cron              *cron.Cron
+	logger            *slog.Logger
+	collectorInterval time.Duration
+	retryInterval     time.Duration
 }
 
 func New(cfg Config, logger *slog.Logger) *Scheduler {
 	c := cron.New()
 	return &Scheduler{
-		cron:   c,
-		logger: logger.With("component", "scheduler"),
+		cron:              c,
+		logger:            logger.With("component", "scheduler"),
+		collectorInterval: cfg.CollectorInterval,
+		retryInterval:     cfg.RetryInterval,
 	}
 }
 
 func (s *Scheduler) AddCollectorJob(job *CollectorJob) {
-	_, err := s.cron.AddFunc("@every "+cfg.CollectorInterval.String(), func() {
+	_, err := s.cron.AddFunc("@every "+s.collectorInterval.String(), func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		defer cancel()
 		job.Run(ctx)
@@ -63,7 +42,7 @@ func (s *Scheduler) AddCollectorJob(job *CollectorJob) {
 }
 
 func (s *Scheduler) AddRetryJob(job *RetryJob) {
-	_, err := s.cron.AddFunc("@every "+cfg.RetryInterval.String(), func() {
+	_, err := s.cron.AddFunc("@every "+s.retryInterval.String(), func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		defer cancel()
 		job.Run(ctx)
@@ -81,6 +60,5 @@ func (s *Scheduler) Start() {
 func (s *Scheduler) Stop(ctx context.Context) error {
 	s.logger.Info("Остановка планировщика")
 	s.cron.Stop()
-	<-s.cron.StopCh()
 	return nil
 }
