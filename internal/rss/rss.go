@@ -137,6 +137,28 @@ func (p *Parser) FetchAndParse(ctx context.Context) ([]Lot, error) {
 	return lots, nil
 }
 
+// FetchAndParseSince возвращает только лоты с pubDate > since
+func (p *Parser) FetchAndParseSince(ctx context.Context, since time.Time) ([]Lot, error) {
+	lots, err := p.FetchAndParse(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var filtered []Lot
+	for _, lot := range lots {
+		if lot.PubDate.After(since) {
+			filtered = append(filtered, lot)
+		}
+	}
+
+	p.logger.Info("Отфильтровано лотов по дате",
+		"total", len(lots),
+		"new", len(filtered),
+		"since", since.Format("2006-01-02 15:04:05"),
+	)
+	return filtered, nil
+}
+
 // parseItem преобразует gofeed.Item в структурированный Lot.
 // Обрабатывает поля RSS и разбирает description на динамические поля.
 func (p *Parser) parseItem(item *gofeed.Item) (Lot, error) {
