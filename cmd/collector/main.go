@@ -96,8 +96,8 @@ func main() {
 
 	// Инициализация клиентов
 	rssParser := rss.NewParser(cfg, logger)
-	torgiClient := torgi.NewClient(logger)
-	nspdClient := nspd.NewClient(logger)
+	torgiClient := torgi.NewClient(cfg.External.Torgi, logger)
+	nspdClient := nspd.NewClient(cfg.External.NSPD, logger)
 
 	// Инициализация nspd (однократно)
 	if err := nspdClient.Initialize(ctx); err != nil {

@@ -145,10 +145,106 @@ func (j *RetryJob) Run(ctx context.Context) {
 	logger := j.logger.With("job", "retry")
 	logger.Info("Запуск задания повторной обработки ошибок")
 
-	// TODO: реализуйте метод FindLotWithErrors в db.Repository
-	// Пока что заглушка — можно реализовать позже
-	// Для первого этапа достаточно лога
+	// Находим лоты с ошибками в external_data
+	// Пока реализуем простой запрос для поиска записей с ошибками
+	rows, err := j.dbRepo.Pool().Query(ctx, `
+		SELECT lot_id, lot_info_error, nspd_error 
+		FROM external_data 
+		WHERE (lot_info_error IS NOT NULL OR nspd_error IS NOT NULL)
+		LIMIT 50
+	`)
+	if err != nil {
+		logger.Error("Ошибка при поиске записей с ошибками", "error", err)
+		return
+	}
+	defer rows.Close()
 
-	logger.Info("Повторная обработка ошибок не реализована (заглушка)")
-	// В будущем: dbRepo.FindLotsWithErrors() → повторить запросы → обновить external_data
+	// Собираем ID лотов для повторной обработки
+	var lotIDs []string
+	var lotInfoErrors []string
+	var nspdErrors []string
+	for rows.Next() {
+		var lotID, lotInfoErr, nspdErr *string
+		if err := rows.Scan(&lotID, &lotInfoErr, &nspdErr); err != nil {
+			logger.Error("Ошибка при сканировании результата", "error", err)
+			continue
+		}
+		if lotID != nil {
+			lotIDs = append(lotIDs, *lotID)
+		}
+		if lotInfoErr != nil {
+			lotInfoErrors = append(lotInfoErrors, *lotInfoErr)
+		}
+		if nspdErr != nil {
+			nspdErrors = append(nspdErrors, *nspdErr)
+		}
+	}
+
+	if len(lotIDs) == 0 {
+		logger.Info("Нет записей с ошибками для повторной обработки")
+		return
+	}
+
+	logger.Info("Найдено записей с ошибками для повторной обработки", "count", len(lotIDs))
+
+	// Для каждого лота с ошибкой пытаемся повторно получить данные
+	for i, lotID := range lotIDs {
+		select {
+		case <-ctx.Done():
+			logger.Info("Задание прервано по контексту")
+			return
+		default:
+		}
+
+		// Получаем информацию о лоте из базы
+		var guid, link, title string
+		var pubDate, dcDate, auctionDate time.Time
+		var cadastralNumber string
+		
+		row := j.dbRepo.Pool().QueryRow(ctx, `
+			SELECT l.guid, l.link, l.title, l.pub_date, l.dc_date, l.auction_date, l.cadastral_number
+			FROM lots l
+			WHERE l.id = $1
+		`, lotID)
+		
+		err := row.Scan(&guid, &link, &title, &pubDate, &dcDate, &auctionDate, &cadastralNumber)
+		if err != nil {
+			logger.Error("Ошибка при получении информации о лоте", "lot_id", lotID, "error", err)
+			continue
+		}
+
+		// Создаем RSS лот с полученной информацией
+		lot := rss.Lot{
+			GUID:    guid,
+			Link:    link,
+			Title:   title,
+			PubDate: pubDate,
+			DCDate:  dcDate,
+			// Остальные поля можно заполнить по необходимости
+		}
+
+		// Запрашиваем данные с torgi.gov.ru
+		var lotInfo map[string]interface{}
+		var torgiErr error
+		if link != "" {
+			lotInfo, torgiErr = j.torgiClient.GetLotInfo(ctx, link)
+		}
+
+		// Запрашиваем данные с nspd.gov.ru
+		var nspdResp *nspd.GeoportalResponse
+		var nspdErr error
+		if cadastralNumber != "" {
+			nspdResp, nspdErr = j.nspdClient.SearchByCadastralNumber(ctx, cadastralNumber)
+		}
+
+		// Обновляем информацию в external_data
+		err = j.dbRepo.UpdateExternalData(ctx, lotID, lotInfo, nspdResp, torgiErr, nspdErr)
+		if err != nil {
+			logger.Error("Ошибка при обновлении external_data", "lot_id", lotID, "error", err)
+		} else {
+			logger.Debug("Данные успешно обновлены", "lot_id", lotID)
+		}
+	}
+
+	logger.Info("Задание повторной обработки ошибок завершено", "processed", len(lotIDs))
 }
