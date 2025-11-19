@@ -57,24 +57,24 @@ type Client struct {
 // - игнорирования SSL-сертификатов
 // - задержки между запросами
 // - логирования
-func NewClient(logger *slog.Logger) *Client {
+func NewClient(config TorgiAPIConfig, logger *slog.Logger) *Client {
 	// Создаём HTTP-транспорт с InsecureSkipVerify
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true, // Требуется по ТЗ из-за SSL-проблем
+			InsecureSkipVerify: config.IgnoreSSL, // Теперь настраивается из конфига
 		},
 	}
 
 	// Базовый HTTP-клиент
 	baseClient := &http.Client{
-		Timeout:   30 * time.Second,
+		Timeout:   config.Timeout,
 		Transport: transport,
 	}
 
 	// Resty-клиент
 	rc := resty.NewWithClient(baseClient)
-	rc.SetBaseURL("https://torgi.gov.ru")
-	rc.SetHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+	rc.SetBaseURL(config.BaseURL)
+	rc.SetHeader("User-Agent", config.UserAgent)
 	rc.SetHeader("Accept", "application/json")
 
 	logger = logger.With("service", "torgi")

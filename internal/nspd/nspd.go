@@ -65,24 +65,24 @@ type Client struct {
 
 // NewClient создаёт клиент с пустой сессией.
 // Перед первым запросом к API необходимо вызвать Initialize().
-func NewClient(logger *slog.Logger) *Client {
+func NewClient(config NSPDAPIConfig, logger *slog.Logger) *Client {
 	// Создаём cookie jar для хранения кук
 	jar, _ := cookiejar.New(nil)
 
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true, // Требуется по ТЗ
+			InsecureSkipVerify: config.IgnoreSSL, // Теперь настраивается из конфига
 		},
 	}
 
 	baseClient := &http.Client{
-		Timeout:   45 * time.Second,
+		Timeout:   config.Timeout,
 		Transport: transport,
 		Jar:       jar, // важно: сохраняем куки между запросами
 	}
 
 	rc := resty.NewWithClient(baseClient)
-	rc.SetHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+	rc.SetHeader("User-Agent", config.UserAgent)
 	rc.SetHeader("Accept", "application/json, text/plain, */*")
 
 	return &Client{
@@ -133,11 +133,11 @@ func (c *Client) SearchByCadastralNumber(ctx context.Context, cadastralNumber st
 	time.Sleep(500 * time.Millisecond)
 
 	// Формируем URL
-	baseURL := "https://nspd.gov.ru/api/geoportal/v2/search/geoportal"
 	params := url.Values{}
 	params.Set("thematicSearchId", "1")
 	params.Set("query", cadastralNumber)
-	fullURL := baseURL + "?" + params.Encode()
+	// Используем базовый URL из конфига
+	fullURL := "https://nspd.gov.ru/api/geoportal/v2/search/geoportal?" + params.Encode()
 
 	// Выполняем запрос с Referer из карты
 	resp, err := c.httpClient.R().

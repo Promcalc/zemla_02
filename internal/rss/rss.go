@@ -79,8 +79,10 @@ func NewParser(cfg *config.Config, logger *slog.Logger) *Parser {
 		// fallback
 		cfg = &config.Config{
 			RSS: config.RSSConfig{
-				Timeout: 30 * time.Second,
-				URL:     "https://torgi.gov.ru/new/api/public/lotcards/rss?lotStatus=PUBLISHED,APPLICATIONS_SUBMISSION&catCode=2&byFirstVersion=true",
+				URL:       "https://torgi.gov.ru/new/api/public/lotcards/rss?lotStatus=PUBLISHED,APPLICATIONS_SUBMISSION&catCode=2&byFirstVersion=true",
+				Timeout:   30 * time.Second,
+				MaxItems:  100,
+				IgnoreSSL: true,
 			},
 		}
 	}
@@ -93,7 +95,7 @@ func NewParser(cfg *config.Config, logger *slog.Logger) *Parser {
 			// Отключаем проверку SSL (по ТЗ: "с verify=False из-за SSL-проблем")
 			Transport: &http.Transport{
 				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true, // ← По требованиям ТЗ
+					InsecureSkipVerify: cfg.RSS.IgnoreSSL, // ← Теперь настраивается из конфига
 				},
 			},
 		}

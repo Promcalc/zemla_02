@@ -21,13 +21,27 @@ type Repository struct {
 }
 
 func NewRepository(ctx context.Context, dbURL string, logger *slog.Logger) (*Repository, error) {
-	pool, err := pgxpool.New(ctx, dbURL)
+	// Настройка конфигурации пула подключений
+	config, err := pgxpool.ParseConfig(dbURL)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка подключения к БД: %w", err)
+		return nil, fmt.Errorf("ошибка парсинга URL подключения к БД: %w", err)
+	}
+
+	// Установка параметров пула подключений
+	config.MaxConns = 10
+	config.MinConns = 2
+	config.MaxConnLifetime = time.Hour
+	config.MaxConnIdleTime = 30 * time.Minute
+	config.MaxConnLifetimeJitter = time.Minute
+
+	pool, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка создания пула подключений к БД: %w", err)
 	}
 
 	// Проверим подключение
 	if err := pool.Ping(ctx); err != nil {
+		pool.Close() // закрываем пул при ошибке
 		return nil, fmt.Errorf("ошибка пинга БД: %w", err)
 	}
 
@@ -205,4 +219,59 @@ func (r *Repository) GetLastPubDate(ctx context.Context) (time.Time, error) {
 		return time.Time{}, fmt.Errorf("ошибка получения last_pub_date: %w", err)
 	}
 	return lastPubDate, nil
+}
+
+// UpdateExternalData обновляет внешние данные для конкретного лота
+func (r *Repository) UpdateExternalData(
+	ctx context.Context,
+	lotID string,
+	lotInfo map[string]interface{},
+	nspdData interface{},
+	lotInfoErr, nspdErr error,
+) error {
+	now := time.Now()
+	var lotInfoFetched, nspdFetched *time.Time
+	var lotInfoJSON, nspdJSON JSONB
+
+	if lotInfo != nil {
+		lotInfoFetched = &now
+		lotInfoJSON = JSONB{Data: lotInfo}
+	}
+	if nspdData != nil {
+		nspdFetched = &now
+		nspdJSON = JSONB{Data: nspdData}
+	}
+
+	var lotInfoErrStr, nspdErrStr *string
+	if lotInfoErr != nil {
+		s := lotInfoErr.Error()
+		lotInfoErrStr = &s
+	}
+	if nspdErr != nil {
+		s := nspdErr.Error()
+		nspdErrStr = &s
+	}
+
+	query := `
+		UPDATE external_data SET
+			lot_info = $2,
+			lot_info_fetched_at = $3,
+			lot_info_error = $4,
+			nspd_data = $5,
+			nspd_fetched_at = $6,
+			nspd_error = $7,
+			updated_at = NOW()
+		WHERE lot_id = $1
+	`
+
+	_, err := r.pool.Exec(ctx, query,
+		lotID, lotInfoJSON, lotInfoFetched, lotInfoErrStr,
+		nspdJSON, nspdFetched, nspdErrStr,
+	)
+	return err
+}
+
+// Pool возвращает пул подключений к базе данных
+func (r *Repository) Pool() *pgxpool.Pool {
+	return r.pool
 }
