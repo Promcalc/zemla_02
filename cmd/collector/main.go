@@ -45,7 +45,14 @@ func main() {
 	if verbose {
 		level = slog.LevelDebug
 	}
+
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
+	ver := version.Get()
+	logger = logger.With(
+		"version", ver.Version,
+		"commit", ver.Commit,
+	)
+
 	slog.SetDefault(logger)
 
 	// Загрузка конфигурации
@@ -57,8 +64,8 @@ func main() {
 
 	// Лог запуска
 	logger.Info("Запуск сборщика лотов",
-		"version", version.Get().Version,
-		"commit", version.Get().Commit,
+		"version", ver.Version,
+		"commit", ver.Commit,
 		"config", configPath,
 		"rss_url", cfg.RSS.URL,
 		"db_url", cfg.Database.URL,
